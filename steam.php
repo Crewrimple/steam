@@ -72,38 +72,53 @@
   </form>
 
   <?php
-  // Обработка формы после отправки
-  if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // Получение значения Steam ID из формы
-    $steamId = $_POST["steamId"];
+  // Connect to the database
+  $db_host = 'localhost';
+  $db_user = 'csgo_user';
+  $db_password = ''; 
+  $db_name = 'csgo_trust_factor';
 
-    // Проверка наличия значения Steam ID
-    if (!empty($steamId)) {
-      // Выполнение запроса к Steam API для получения траст-фактора
-      $url = "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=6915BD4D9BEA615421920E264B1CFDC1&steamids=" . $steamId;
-      $response = file_get_contents($url);
-      $data = json_decode($response, true);
+  $conn = new mysqli($db_host, $db_user, $db_password, $db_name);
 
-      // Проверка наличия данных и вывод траст-фактора
-      if (!empty($data["players"])) {
-        $trustFactor = $data["players"][0]["EconomyBan"];
-        $trustClass = '';
-
-        if ($trustFactor == "none") {
-          $trustClass = 'trust-good';
-          echo "<p class=\"$trustClass\">На вашем аккаунте отсутствуют нарушения и ограничения.</p>";
-        } else {
-          $trustClass = 'trust-bad';
-          echo "<p class=\"$trustClass\">На вашем аккаунте имеются нарушения или ограничения.</p>";
-        }
-      } else {
-        echo "<p class=\"trust-black\">Не удалось получить данные для Steam ID $steamId.</p>";
-      }
-    } else {
-      echo "<p class=\"trust-black\">Введите Steam ID.</p>";
-    }
+  // Check the connection
+  if ($conn->connect_error) {
+      die("Connection failed: " . $conn->connect_error);
   }
-  ?>
 
+  // Process form after submission
+  if ($_SERVER["REQUEST_METHOD"] === "POST") {
+      $steamId = $_POST["steamId"];
+
+      if (!empty($steamId)) {
+          $url = "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=your_steam_api_key&steamids=" . $steamId;
+          $response = file_get_contents($url);
+          $data = json_decode($response, true);
+
+          if (!empty($data["players"])) {
+              $trustFactor = $data["players"][0]["EconomyBan"];
+              $trustClass = '';
+
+              if ($trustFactor == "none") {
+                  $trustClass = 'trust-good';
+                  echo "<p class=\"$trustClass\">На вашем аккаунте отсутствуют нарушения и ограничения.</p>";
+              } else {
+                  $trustClass = 'trust-bad';
+                  echo "<p class=\"$trustClass\">На вашем аккаунте имеются нарушения или ограничения.</p>";
+              }
+
+              // Store the Steam ID and trust factor in the database
+              $sql = "INSERT INTO trust_factors (steam_id, trust_factor) VALUES ('$steamId', '$trustFactor')";
+              $conn->query($sql);
+          } else {
+              echo "<p class=\"trust-black\">Не удалось получить данные для Steam ID $steamId.</p>";
+          }
+      } else {
+          echo "<p class=\"trust-black\">Введите Steam ID.</p>";
+      }
+  }
+
+  // Close the database connection
+  $conn->close();
+  ?>
 </body>
 </html>
